@@ -1,0 +1,390 @@
+---
+title: "Housing data analysis - Women Who Code workshop"
+author: "Darya Vanichkina"
+date: "13/03/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+load.libraries <- c('tidyverse', 'forcats', 'corrplot', 'caret', 'Metrics', 'randomForest', 'xgboost', 'glmnet')
+install.lib <- load.libraries[!load.libraries %in% installed.packages()]
+for(libs in install.lib) install.packages(libs, dependences = TRUE)
+sapply(load.libraries, library, character = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load the data in from csv. 
+```{r ReadData}
+trainH <- read.csv("train.csv")
+testH <- read.csv("test.csv")
+```
+
+What features are there in the data? What are the dimensions of the data? What are the column headers? Use the summary() and str() functions to explore...
+
+
+
+```{r}
+dim(trainH)
+names(trainH)
+summary(trainH)
+str(trainH)
+```
+
+# What does the distribution of sale price look like?
+
+Is the sale price (the variable we're interested in prediting) normally distributed? Find its mean, standard deviation, and plot a histogram of the distribution using ggplot2.
+
+
+```{r PlotSalehistogram}
+trainH %>% ggplot(., aes(x = SalePrice)) + 
+  geom_histogram(bins = 100, aes(y =..density..)) +  
+  geom_density(col = "red") +  theme_minimal() + 
+  stat_function(fun=dnorm, color="blue", args=list(mean=mean(trainH$SalePrice),  sd=sd(trainH$SalePrice)))
+# what is the mean?
+mean(trainH$SalePrice)
+# what is the standard deviation?
+sd(trainH$SalePrice)
+```
+
+Plot a quantile-quantile plot (QQ plot) to "assess" normality. This plot compared the data we have (Sample Quantiles) with a theoretical sample coming from a normal distribution.  Each point (x, y) corresponds to one of the quantiles of the second distribution (x-coordinate, theoretical) plotted against the same quantile of the first distribution (y-coordinate, our data). Thus the line is a parametric curve with the parameter which is the number of the interval for the quantile.
+
+```{r QQPlot}
+qqnorm(trainH$SalePrice)
+qqline(trainH$SalePrice, col = "blue")
+```
+
+A standard way of transforming the data to be better approximated by a normal distribution is by using the log-transform? 
+
+Carry out this transformation and use a histogram and QQ plot to see whether it works...
+
+
+```{r LogTransform}
+trainH <- trainH %>% 
+  mutate(LogSalePrice =  log(SalePrice + 1)) %>% 
+  mutate(SalePrice =  NULL)
+
+# plot
+trainH %>% ggplot(., aes(x = LogSalePrice)) + geom_histogram(bins = 100, aes(y =..density..)) +  geom_density(col = "red") +  theme_minimal() + stat_function(fun=dnorm, color="blue", args=list(mean=mean(trainH$LogSalePrice),  sd=sd(trainH$LogSalePrice)))
+
+qqnorm(trainH$LogSalePrice)
+qqline(trainH$LogSalePrice, col = "blue")
+```
+
+
+
+# Missing data
+What happens if we only use complete data? How much data is missing?
+
+```{r whatsmissing}
+trainHcomplete <- trainH[complete.cases(trainH), ]
+colSums(sapply(trainH, is.na)) [colSums(sapply(trainH, is.na)) > 0]
+colSums(sapply(testH, is.na)) [colSums(sapply(testH, is.na)) > 0]
+```
+
+We need to combine the datasets for imputation, so that we don't have NAs in the test data as well!
+
+```{r combineAlldata}
+trainH$source <- "train"
+testH$source <- "test"
+testH$LogSalePrice <- NA
+alldata <- rbind(trainH, testH)
+colSums(sapply(alldata, is.na)) [colSums(sapply(alldata, is.na)) > 0]
+```
+
+
+How do we impute the missing data?
+
+
+```{r ExploreUsingTable}
+table(alldata$PoolQC)
+```
+
+Read the metadata file and see that many of the NAs should be recoded as None since these features are lacking in the house. 
+
+
+```{r missingBasedOnDescription}
+alldata <- alldata %>% 
+  mutate(PoolQC = fct_explicit_na(PoolQC, na_level = "None")) %>%
+  mutate(MiscFeature = fct_explicit_na(MiscFeature, na_level = "None")) %>%
+  mutate(Fence = fct_explicit_na(Fence, na_level = "None")) %>%
+  mutate(FireplaceQu = fct_explicit_na(FireplaceQu, na_level = "None")) %>%
+  mutate(GarageType = fct_explicit_na(GarageType, na_level = "None")) %>%
+  mutate(GarageFinish = fct_explicit_na(GarageFinish, na_level = "None")) %>%
+  mutate(GarageQual = fct_explicit_na(GarageQual, na_level = "None")) %>%
+  mutate(GarageCond = fct_explicit_na(GarageCond, na_level = "None")) %>%
+  mutate(BsmtQual = fct_explicit_na(BsmtQual, na_level = "None")) %>%
+  mutate(BsmtCond = fct_explicit_na(BsmtCond, na_level = "None")) %>%
+  mutate(BsmtExposure = fct_explicit_na(BsmtExposure, na_level = "None")) %>%
+  mutate(BsmtFinType1 = fct_explicit_na(BsmtFinType1, na_level = "None")) %>%
+  mutate(BsmtFinType2 = fct_explicit_na(BsmtFinType2, na_level = "None")) 
+
+colSums(sapply(alldata, is.na)) [colSums(sapply(alldata, is.na)) > 0]
+```
+
+For the GarageYrBlt set to zero. 
+
+
+```{r missingSetToZero}
+alldata <- alldata %>% replace_na(list(BsmtFinSF1 = 0, BsmtFinSF2 = 0,  BsmtUnfSF = 0, TotalBsmtSF = 0, GarageYrBlt = 0, GarageArea= 0, GarageCars = 0, BsmtFullBath = 0, BsmtHalfBath = 0, MasVnrArea = 0))
+
+colSums(sapply(alldata, is.na)) [colSums(sapply(alldata, is.na)) > 0]
+```
+
+Lot frontage - set as median for the neighborhood.
+
+```{r LotFrontageMedian}
+alldata <- alldata %>% 
+  group_by(Neighborhood) %>% 
+  mutate(LotFrontage=ifelse(is.na(LotFrontage), median(LotFrontage, na.rm=TRUE), LotFrontage))
+```
+
+
+# Now split data again
+```{r split}
+trainHC <-alldata %>% filter(source == "train")
+testHC <-alldata %>% filter(source == "test")
+```
+
+
+
+# Basic exploratory data analysis of training data
+
+How does the sale price depend on living  area: X1stFlrSF, X2ndFlrSF, TotalBsmtSF? Create a variable TotalSqFt which is a combination of these 3. Does it better predict the house price?
+
+```{r SalePriceExplore}
+trainHC %>% ggplot(aes(x=X1stFlrSF, y = LogSalePrice)) + geom_point() + theme_minimal()
+trainHC %>% ggplot(aes(x=X2ndFlrSF, y = LogSalePrice)) + geom_point() + theme_minimal()
+trainHC %>% ggplot(aes(x=TotalBsmtSF, y = LogSalePrice)) + geom_point() + theme_minimal()
+
+# create extra variable 
+trainHC$TotalSqFt <- trainHC$X1stFlrSF + trainHC$X2ndFlrSF + trainHC$TotalBsmtSF
+
+trainHC %>% ggplot(aes(x=TotalSqFt, y = LogSalePrice)) + geom_point() + theme_minimal()
+```
+
+Identify and remove outliers with a high total square foot, but low price
+
+```{r RemoveOut}
+# identify largest houses by area
+trainHC %>% arrange(desc(TotalSqFt)) %>% select(Id, TotalSqFt)
+# filter out based on size of top 2
+trainHC <- trainHC %>% filter(TotalSqFt <= 7800)
+# check that we've removed them
+trainHC %>% ggplot(aes(x=TotalSqFt, y = LogSalePrice)) + geom_point() + theme_minimal()
+```
+
+
+
+Does having more bedrooms increase sale price?
+
+```{r Bedroom}
+trainHC$BedroomAbvGr %>% summary()
+trainHC %>% ggplot(aes(x=as.factor(BedroomAbvGr), y = LogSalePrice)) + 
+  geom_boxplot() + theme_minimal()
+```
+
+
+Visualise both number of bedrooms (as a factor) and TotalSqFt as a scatterplot to see if a trend is visible. 
+
+
+```{r CombineAreaAndSqFt}
+trainHC %>% ggplot(aes(x=TotalSqFt, y = LogSalePrice, colour = as.factor(BedroomAbvGr))) + geom_point() + theme_minimal() + guides(col=guide_legend(title="Num Bedrooms"))
+                   
+trainHC %>% ggplot(aes(x=TotalSqFt, y = LogSalePrice, colour = as.factor(BedroomAbvGr), alpha = 0.2)) + geom_point() + theme_minimal() + guides(col=guide_legend(title="Num Bedrooms"))
+
+```
+
+Are newer or more recently renovated properties more expensive? Investigate this generally and then specifically for 2 - 4 bedroom properties.
+
+```{r YrBltRemodelled}
+trainHC %>% ggplot(aes(x=YearBuilt, y = LogSalePrice)) + geom_point() + theme_minimal() 
+
+trainHC %>% ggplot(aes(x=YearRemodAdd, y = LogSalePrice)) + geom_point() + theme_minimal() 
+
+trainHC %>% filter(BedroomAbvGr >= 2) %>% filter(BedroomAbvGr <= 4) %>% ggplot(aes(x=YearBuilt, y = LogSalePrice)) + geom_point() + theme_bw() + facet_grid(BedroomAbvGr~.)
+
+```
+
+
+Lets convert kitchen quality to numeric (we'll see why we need this later):
+
+From the metadata we know it can be:
+
+- Ex	Excellent
+- Gd	Good
+- TA	Typical/Average
+- Fa	Fair
+- Po	Poor
+
+Recode this to numeric values using mutate() and recode(). 
+
+```{r ConvertToNumeric}
+class(trainHC$KitchenQual)
+trainHC %>% ggplot(aes(x = KitchenQual, y = LogSalePrice)) + geom_boxplot() + theme_minimal()
+
+trainHC %>% mutate( KitchenQual = fct_relevel(KitchenQual, "Ex", "Gd", "TA", "Fa", "Po")) %>% ggplot(aes(x = KitchenQual, y = LogSalePrice)) + geom_boxplot() + theme_minimal()
+
+trainHC <- trainHC %>% mutate( KitchenQual = dplyr::recode(KitchenQual, `Ex` = 5L, `Gd` = 4L, `TA` = 3L, `Fa` = 2L, `Po` = 1L)) 
+testHC <- testHC %>% mutate( KitchenQual = dplyr::recode(KitchenQual, `Ex` = 5L, `Gd` = 4L, `TA` = 3L, `Fa` = 2L, `Po` = 1L)) 
+
+# %>% ggplot(aes(x = as.factor(KitchenQual), y = LogSalePrice)) + geom_boxplot() + theme_minimal()
+```
+
+Convert Bldgtype to numeric
+
+```{r BldgTypeNeighborhood}
+trainHC %>% group_by(BldgType) %>% 
+  summarise( med = median(LogSalePrice)) %>%
+  arrange(desc(med))
+
+trainHC %>% mutate( BldgType = fct_relevel(BldgType, "TwnhsE", "1Fam","Twnhs","Duplex", "2fmCon")) %>% ggplot(aes(x = BldgType, y = LogSalePrice)) + geom_boxplot() + theme_minimal()
+
+trainHC <- trainHC %>% mutate( BldgType = dplyr::recode(BldgType, `TwnhsE` = 5L, `1Fam` = 4L, `Twnhs` = 3L, `Duplex` = 2L, `2fmCon` = 1L)) 
+testHC <- testHC %>% mutate( BldgType = dplyr::recode(BldgType, `TwnhsE` = 5L, `1Fam` = 4L, `Twnhs` = 3L, `Duplex` = 2L, `2fmCon` = 1L)) 
+```
+
+
+What variables are correlated with each other and with price? Plot a correlation plot using corrplot() for all numeric variables and those that show the top correlation with LogSalePrice.
+
+```{r Corrplot}
+trainHCnumeric <- trainHC[ , sapply(trainHC, is.numeric)]
+corrplot(cor(trainHCnumeric, use="everything"), method="circle", type="lower",  sig.level = 0.01, insig = "blank")
+
+correllationmatrix <- as.data.frame(cor(trainHCnumeric, use="everything"))
+correllationmatrix$name <- row.names(correllationmatrix)
+correllationmatrix %>% select(LogSalePrice, name) %>% arrange(desc(LogSalePrice))
+# take out the top 10 names
+varscare <- correllationmatrix %>% 
+  select(LogSalePrice, name) %>% 
+  arrange(desc(LogSalePrice)) %>% 
+  head(n = 10L) %>% 
+  select(name)
+
+corrplot(cor(trainHC[,varscare$name ], use="everything"), method="circle", type="lower",  sig.level = 0.01, insig = "blank")
+corrplot(cor(trainHC[,varscare$name ], use="everything"), method="number", type="lower",  sig.level = 0.01, insig = "blank")
+
+
+```
+
+Use the createDataPartition() function to separate the training data into a training and testing subset. Allocate 50% of the data to each class. Run set.seed(12) before this.
+
+```{r MakeTestTrain}
+set.seed(12)
+partition <- createDataPartition(y = trainHC$LogSalePrice, p = 0.5, list=FALSE)
+trainHC$source <- NULL
+trainHCtrain <- trainHC[partition,]
+trainHCtest <- trainHC[-partition,]
+```
+
+Fit a linear model considering the "top 10"" correlated (top 9, ignore LogSalePrice for obvious reasons).
+
+```{r lm}
+lm_model_top10 <- lm(LogSalePrice ~  TotalSqFt + OverallQual + GrLivArea + GarageCars + KitchenQual + GarageArea + TotalBsmtSF + X1stFlrSF + FullBath, data=trainHCtrain)
+summary(lm_model_top10)
+```
+
+Use predict() to predict house prices using our top10 model on the "test" portion of the training dataset. Use rmse to assess the root mean square error (our metric of accuracy). 
+
+
+```{r HowdWeGo}
+prediction_lm10 <- predict(lm_model_top10, trainHCtest, type="response")
+trainHCtest$lm10 <- prediction_lm10
+rm(prediction_lm10)
+# rmse?
+rmse(trainHCtest$LogSalePrice, trainHCtest$lm10)
+```
+
+Use randomForest to train a random forest model on all of the variables. Use predict and rmse to make the prediction and assess the accuracy respectively. Was a linear (on 9 features) or random forest model more accurate?
+
+```{r RandomForest}
+randFor <- randomForest(LogSalePrice ~ ., data=trainHCtrain)
+# Predict using the test set
+prediction_rf <- predict(randFor, trainHCtest)
+trainHCtest$randFor <- prediction_rf
+# rmse?
+rmse(trainHCtest$LogSalePrice, trainHCtest$randFor)
+```
+
+Use xgboost to predict house prices from numeric features of training dataset. 
+
+Use xgb.plot.importance() to assess which variables are most important for predicting house prices. 
+
+```{r NumericOnlyXGboost}
+trainHCtrainNum <- as(as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)]), "sparseMatrix")
+trainHCtestNum <-  as(as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)]), "sparseMatrix")
+
+trainD <- xgb.DMatrix(data = trainHCtrainNum, label = trainHCtrainNum[,"LogSalePrice"])
+
+#Cross validate the model
+cv.sparse <- xgb.cv(data = trainD,
+                    nrounds = 600,
+                    min_child_weight = 0,
+                    max_depth = 10,
+                    eta = 0.02,
+                    subsample = .7,
+                    colsample_bytree = .7,
+                    booster = "gbtree",
+                    eval_metric = "rmse",
+                    verbose = TRUE,
+                    print_every_n = 50,
+                    nfold = 4,
+                    nthread = 2,
+                    objective="reg:linear")
+
+#Train the model
+#Choose the parameters for the model
+param <- list(colsample_bytree = .7,
+             subsample = .7,
+             booster = "gbtree",
+             max_depth = 10,
+             eta = 0.02,
+             eval_metric = "rmse",
+             objective="reg:linear")
+
+
+#Train the model using those parameters
+bstSparse <-
+  xgb.train(params = param,
+            data = trainD,
+            nrounds = 600,
+            watchlist = list(train = trainD),
+            verbose = TRUE,
+            print_every_n = 50,
+            nthread = 2)
+
+testD <- xgb.DMatrix(data = trainHCtestNum)
+
+prediction <- predict(bstSparse, testD) #Make the prediction based on the half of the training data set aside
+
+#Put testing prediction and test dataset all together
+
+prediction <- as.data.frame(as.matrix(prediction))
+colnames(prediction) <- "xgboost"
+trainHCtest$xgboost <- prediction$xgboost
+
+
+#Test with RMSE
+rmse(trainHCtest$LogSalePrice, trainHCtest$xgboost)
+
+# Feature importance
+importance_matrix <- xgb.importance(dimnames(trainD)[[2]], model = bstSparse)
+xgb.plot.importance(importance_matrix[1:10])
+```
+
+
+Use the glmnet library to train a ridge regression model. Is it more or less accurate than XGBoost? 
+
+```{r RidgeReg}
+trainHCtrainNumMatrix <- as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)])
+trainHCtestNumMatrix  <-  as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)])
+# cross validation for glmnet
+glm.cv.ridge <- cv.glmnet(trainHCtrainNum[,c(1:38,40)], trainHCtrainNum[,"LogSalePrice"], alpha = 0)
+# which lambda?
+penalty.ridge <- glm.cv.ridge$lambda.min
+glm.ridge <- glmnet(x = trainHCtrainNum[,c(1:38,40)], y = trainHCtrainNum[,"LogSalePrice"], alpha = 0, lambda = penalty.ridge )
+y_pred.ridge <- as.numeric(predict(glm.ridge, trainHCtestNum[,c(1:38,40)] ))
+rmse(trainHCtest$LogSalePrice, y_pred.ridge)
+```
+

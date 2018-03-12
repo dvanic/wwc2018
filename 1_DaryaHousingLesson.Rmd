@@ -1,0 +1,309 @@
+---
+title: "Housing data analysis - Women Who Code workshop"
+author: "Yournamehere"
+date: "13/03/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+load.libraries <- c('tidyverse', 'forcats', 'corrplot', 'caret', 'Metrics', 'randomForest', 'xgboost', 'glmnet', 'car')
+# note car only for Darya to use the demo dataset
+install.lib <- load.libraries[!load.libraries %in% installed.packages()]
+for(libs in install.lib) install.packages(libs, dependences = TRUE)
+sapply(load.libraries, library, character = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Basics ---- 
+```{r VeryBasics}
+# Arithmetic operations: R is a calculator
+1 + 1
+10**2
+TRUE + TRUE
+```
+
+Gotcha: R is not python (works only for numeric):
+
+```{r}
+#"1" + "1"
+```
+Variables:
+
+```{r Variables}
+x <- 1 # the R "way" to do it ...
+y = 2
+print(x)
+print(y)
+```
+
+[More about why](https://csgillespie.wordpress.com/2010/11/16/assignment-operators-in-r-vs/)
+
+Data types: vectors
+
+- "character" (aka string), numeric and boolean 
+
+```{r Vectors}
+a <- c(1,2,5.3,6,-2,4) # numeric vector
+b <- c("one","two","three") # character vector
+c <- c(TRUE,TRUE,TRUE,FALSE,TRUE,FALSE) #logical vector
+print(paste(c(class(a), class(b), class(c))))
+```
+
+Getting help and the combine function:
+
+```{r HelpC, include=FALSE}
+# getting help
+?c
+x <- c(1,2,3)
+class(x)
+y <- c(x, "2")
+class(y)
+```
+
+
+## Data types: data frames (the main class for data analysis) --- 
+
+
+
+
+
+Load the data in from csv. 
+```{r ReadData, include=FALSE}
+# read.csv("file")
+myprestige <- Prestige
+myprestige$job <- row.names(myprestige)
+?Prestige
+myprestige
+head(myprestige)
+```
+
+
+
+
+What features are there in the data? What are the dimensions of the data? What are the column headers? Use the summary() and str() functions to explore...
+
+
+
+```{r WhatFeat, include=FALSE}
+summary(myprestige)
+str(myprestige)
+table(myprestige$type)
+```
+
+# What does the distribution of sale price look like?
+
+Is the sale price (the variable we're interested in prediting) normally distributed? Find its mean, standard deviation, and plot a histogram of the distribution using ggplot2.
+
+
+```{r PlotSalehistogram}
+myprestige %>% ggplot(aes(x = income)) + geom_histogram() 
+myprestige %>% ggplot(aes(x = income)) + geom_histogram() + theme_minimal()
+myprestige %>% ggplot(aes(x = income)) + geom_histogram(bins = 100) + theme_minimal()
+myprestige %>% ggplot(aes(x = income)) + geom_histogram(bins = 100, aes(y =..density..)) + theme_minimal() +  geom_density(col = "red")
+myprestige %>% ggplot(aes(x = income)) + geom_histogram(bins = 100, aes(y =..density..)) + theme_minimal() +  geom_density(col = "red") + stat_function(fun=dnorm, color="blue", args=list(mean=mean(myprestige$income),  sd=sd(myprestige$income)))
+```
+
+Plot a quantile-quantile plot (QQ plot) to "assess" normality. This plot compared the data we have (Sample Quantiles) with a theoretical sample coming from a normal distribution.  Each point (x, y) corresponds to one of the quantiles of the second distribution (x-coordinate, theoretical) plotted against the same quantile of the first distribution (y-coordinate, our data). Thus the line is a parametric curve with the parameter which is the number of the interval for the quantile.
+
+```{r QQPlot}
+qqnorm(myprestige$income)
+qqline(myprestige$income, col = "blue")
+```
+
+A standard way of transforming the data to be better approximated by a normal distribution is by using the log-transform? 
+
+Carry out this transformation and use a histogram and QQ plot to see whether it works...
+
+
+```{r LogTransform}
+myprestige <- myprestige %>% 
+  mutate(incomeLog =  log(income + 1)) %>% 
+  mutate(income =  NULL)
+
+# plot
+myprestige %>% ggplot(aes(x = incomeLog)) + geom_histogram(bins = 100, aes(y =..density..)) + theme_minimal() +  geom_density(col = "red") + stat_function(fun=dnorm, color="blue", args=list(mean=mean(myprestige$income),  sd=sd(myprestige$income)))
+
+qqnorm(myprestige$incomeLog)
+qqline(myprestige$incomeLog, col = "blue")
+```
+
+
+
+# Missing data
+What happens if we only use complete data? How much data is missing?
+
+Topics used here (but not explored):
+[Subsetting data frames](https://swcarpentry.github.io/r-novice-gapminder/06-data-subsetting/)
+[The apply family](https://nsaunders.wordpress.com/2010/08/20/a-brief-introduction-to-apply-in-r/) 
+
+```{r whatsmissing}
+dim(myprestige)
+dim(myprestige[complete.cases(myprestige), ])
+colSums(sapply(myprestige, is.na)) [colSums(sapply(myprestige, is.na)) > 0]
+```
+
+We need to combine the datasets for imputation, so that we don't have NAs in the test data as well!
+
+```{r combineAlldata}
+# this is not applicable to myprestige but need to show rbind here
+myprestige2 <- rbind(myprestige, myprestige)
+```
+
+
+How do we impute the missing data?
+
+
+```{r ExploreUsingTable}
+table(myprestige2$type, useNA = "always")
+```
+
+Read the metadata file and see that many of the NAs should be recoded as None since these features are lacking in the house. 
+
+(for the demo dataset we'll just add a factor of other)
+
+```{r missingBasedOnDescription}
+myprestige2 <- myprestige2 %>% mutate(type = fct_explicit_na(type, na_level = "Ot"))
+```
+
+For the GarageYrBlt set to zero. 
+
+
+```{r missingSetToZero}
+# no demo here
+myprestige2 <-  myprestige2 %>% replace_na(list(income = 0)) # if there were a zero income
+```
+
+Lot frontage - set as median for the neighborhood.
+
+```{r LotFrontageMedian}
+# as a hint - use group_by() and mutate()
+# will also need ifelse() function
+myprestige2 %>% group_by(type) %>% summarise(incomeM = median(incomeLog))
+```
+
+
+# Now split data again
+```{r split}
+# no demo here
+```
+
+
+
+# Basic exploratory data analysis of training data
+
+How does the sale price depend on living  area: X1stFlrSF, X2ndFlrSF, TotalBsmtSF? Create a variable TotalSqFt which is a combination of these 3. Does it better predict the house price?
+
+```{r SalePriceExplore}
+# no demo here, just ggplot pipes
+# then make dummy variable
+myprestige2$nonsense <- myprestige2$women + myprestige2$education
+```
+
+Identify and remove outliers with a high total square foot, but low price
+
+[Useful reference for dplyr](https://datascienceplus.com/data-manipulation-with-dplyr/)
+
+```{r RemoveOut}
+myprestige2 %>% arrange(desc(education))
+myprestige2 %>% arrange(desc(education)) %>% select(education, incomeLog, women)
+myprestige2 %>% arrange(desc(education)) %>% filter(education >= 15.96)
+```
+
+Does having more bedrooms increase sale price?
+```{r Bedroom}
+myprestige2 %>% ggplot(aes(x=as.factor(type), y = incomeLog)) +   geom_boxplot() + theme_minimal()
+```
+
+
+Visualise both number of bedrooms (as a factor) and TotalSqFt as a scatterplot to see if a trend is visible. 
+
+
+```{r CombineAreaAndSqFt}
+myprestige2 %>% ggplot(aes(x=women, y = incomeLog, colour = as.factor(type))) + geom_point() + theme_minimal() + guides(col=guide_legend(title="JobType"))
+```
+
+Are newer or more recently renovated properties more expensive? Investigate this generally and then specifically for 2 - 4 bedroom properties.
+
+```{r YrBltRemodelled}
+# no code
+```
+
+
+Lets convert kitchen quality to numeric (we'll see why we need this later):
+
+From the metadata we know it can be:
+
+- Ex	Excellent
+- Gd	Good
+- TA	Typical/Average
+- Fa	Fair
+- Po	Poor
+
+Recode this to numeric values using mutate() and recode(). 
+
+```{r ConvertToNumeric}
+myprestige2 <- myprestige2 %>% mutate(type = dplyr::recode(type, `prof` = 4L, `wc` = 3L, `bc` = 2L, `Ot` = 1L)) 
+summary(myprestige2$type)
+```
+
+Convert Bldgtype to numeric
+
+```{r BldgTypeNeighborhood}
+# no need for code
+```
+
+
+What variables are correlated with each other and with price? Plot a correlation plot using corrplot() for all numeric variables and those that show the top correlation with LogSalePrice.
+
+```{r Corrplot}
+myprestige2num <- myprestige2[ , sapply(myprestige2, is.numeric)]
+corrplot(cor(myprestige2num, use="everything"), method="circle", type="lower",  sig.level = 0.01, insig = "blank")
+corrplot(cor(myprestige2num, use="everything"), method="number", type="lower",  sig.level = 0.01, insig = "blank")
+```
+
+Use the createDataPartition() function to separate the training data into a training and testing subset. Allocate 50% of the data to each class. Run set.seed(12) before this.
+
+```{r MakeTestTrain}
+set.seed(12)
+partitionD <- createDataPartition(y = myprestige2num$incomeLog, p = 0.5, list=FALSE)
+myprestige2train <- myprestige2num[partitionD,]
+myprestige2test <- myprestige2num[-partitionD,]
+```
+
+Fit a linear model considering the "top 10"" correlated (top 9, ignore LogSalePrice for obvious reasons).
+
+```{r lm}
+lm_myprestige1 <- lm(incomeLog ~ education, data=myprestige2train)
+lm_myprestige2 <- lm(incomeLog ~ education + women + prestige, data=myprestige2train)
+summary(lm_myprestige1)
+summary(lm_myprestige2)
+```
+
+Use predict() to predict house prices using our top10 model on the "test" portion of the training dataset. Use rmse to assess the root mean square error (our metric of accuracy). 
+
+
+```{r HowdWeGo}
+prediction_lm1 <- predict(lm_myprestige1, myprestige2test, type="response")
+prediction_lm2 <- predict(lm_myprestige2, myprestige2test, type="response")
+
+# rmse?
+rmse(myprestige2test$incomeLog, prediction_lm1)
+rmse(myprestige2test$incomeLog, prediction_lm2)
+
+```
+
+All other models - just work in the housing template/final housing template files.
+
+## Where to from here
+
+- [DataCamp](http://datacamp.com/)
+- [R-Bloggers](https://www.r-bloggers.com/)
+- [RStudio webinars](https://www.rstudio.com/resources/webinars/)
+- [Our data today: LOTS more info and analysis](https://www.kaggle.com/c/house-prices-advanced-regression-techniques)
+- [ISWR](http://www-bcf.usc.edu/~gareth/ISL/)
+- [EOSL](https://web.stanford.edu/~hastie/ElemStatLearn/)
+- [AnalyticsEdgeMIT](https://www.edx.org/course/analytics-edge-mitx-15-071x-3)
+- Anything Hadley Wickham does***
+
