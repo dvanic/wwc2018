@@ -1,13 +1,13 @@
 ---
 title: "Housing data analysis - Women Who Code workshop"
-author: "Yournamehere"
+author: "Darya Vanichkina"
 date: "13/03/2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup, warning=FALSE, }
 load.libraries <- c('tidyverse', 'forcats', 'corrplot', 'caret', 'Metrics', 'randomForest', 'xgboost', 'glmnet', 'car')
 # note car only for Darya to use the demo dataset
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
