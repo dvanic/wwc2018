@@ -27,7 +27,8 @@ This will install all of the packages aka libraries we will need to use for the 
 
 ## After the workshop
 
-1. If you try to work more on the materials in this workshop and have questions, please feel free to open them as issues tickets here in the repo on github.
+1. Please fill out the feedback form [here](https://goo.gl/forms/M9goXHBE3ghVBkBB3). This is Darya's personal one, not the standard WWC one. Thank you!
+2. If you try to work more on the materials in this workshop and have questions, please feel free to open them as issues tickets here in the repo on github.
 
 
 ## Where to from here?
