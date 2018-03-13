@@ -3,8 +3,8 @@ title: "Housing data analysis - Women Who Code workshop"
 author: "Yournamehere"
 date: "13/03/2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -132,7 +132,7 @@ Recode the NA values that should be None using mutate() and fct_explicit_na().
 
 ```
 
-#### Task 10
+#### Task 10 (***)
 
 For the GarageYrBlt - set NA values using replace_na() to zero. 
 
@@ -175,7 +175,7 @@ Split back into training (trainHC) and test (testHC) sets (because kaggle traini
 
 ```
 
-#### Task 14
+#### Task 14 (***)
 
 Identify and remove outliers with a high total square foot, but low price.
 
@@ -187,7 +187,8 @@ Identify and remove outliers with a high total square foot, but low price.
 
 Does having more bedrooms increase sale price?
 
-#### Task 15
+#### Task 15 (***)
+
 Use a geom_boxplot() to explore this
 
 ```{r Bedroom}
@@ -206,7 +207,8 @@ Visualise both number of bedrooms (as a factor) and TotalSqFt as a scatterplot t
 
 Are newer or more recently renovated properties more expensive? 
 
-#### Task 17
+#### Task 17 (***)
+
 1. Investigate this generally and then 
 2. ... specifically for 2 - 4 bedroom properties.
 
@@ -232,7 +234,8 @@ Recode this to numeric values using mutate() and recode().
 
 ```
 
-#### Task 19
+#### Task 19 (***)
+
 Convert Bldgtype to numeric
 
 ```{r BldgTypeNeighborhood}
