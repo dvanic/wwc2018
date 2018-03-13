@@ -34,7 +34,13 @@ This will install all of the packages aka libraries we will need to use for the 
 
 If you'd like to learn more about the materials presented, some of my favourite resources are:
 
-
-
+- [DataCamp](http://datacamp.com/)
+- [R-Bloggers](https://www.r-bloggers.com/)
+- [RStudio webinars](https://www.rstudio.com/resources/webinars/)
+- [Our data today: LOTS more info and analysis - kaggle](https://www.kaggle.com/c/house-prices-advanced-regression-techniques)
+- [Introductory Statistics with R](http://www-bcf.usc.edu/~gareth/ISL/)
+- [Elements of Statistical Learning](https://web.stanford.edu/~hastie/ElemStatLearn/)
+- [AnalyticsEdgeMIT](https://www.edx.org/course/analytics-edge-mitx-15-071x-3)
+- Anything Hadley Wickham does***
 
 
