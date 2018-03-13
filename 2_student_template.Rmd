@@ -3,8 +3,8 @@ title: "Housing data analysis - Women Who Code workshop"
 author: "Yournamehere"
 date: "13/03/2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -16,6 +16,21 @@ sapply(load.libraries, library, character = TRUE)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Basic preamble - live coding in parallel with Darya:
+
+- variables
+- data types
+
+
+[The link about assignment operators](https://csgillespie.wordpress.com/2010/11/16/assignment-operators-in-r-vs/)
+
+```{r LiveCode}
+
+```
+
+
+
+#### Task 1
 Load the data in from csv. 
 
 ```{r ReadData}
@@ -23,7 +38,13 @@ trainH <- read.csv("train.csv")
 testH <- read.csv("test.csv")
 ```
 
-What features are there in the data? What are the dimensions of the data? What are the column headers? Use the summary() and str() functions to explore...
+#### Task 2
+
+1. What features are there in the data? 
+2. What are the dimensions of the data? 
+3. What are the column headers? 
+
+Use the summary() and str() functions to explore...
 
 
 
@@ -31,16 +52,24 @@ What features are there in the data? What are the dimensions of the data? What a
 
 ```
 
-# What does the distribution of sale price look like?
+## What does the distribution of sale price look like?
 
-Is the sale price (the variable we're interested in prediting) normally distributed? Find its mean, standard deviation, and plot a histogram of the distribution using ggplot2.
+#### Task 3
+
+1. Is the sale price (the variable we're interested in prediting) normally distributed? 
+2. Plot a histogram of the distribution using ggplot2.
+3. Find its mean, standard deviation
 
 
 ```{r PlotSalehistogram}
 
 ```
 
-Plot a quantile-quantile plot (QQ plot) to "assess" normality. This plot compared the data we have (Sample Quantiles) with a theoretical sample coming from a normal distribution.  Each point (x, y) corresponds to one of the quantiles of the second distribution (x-coordinate, theoretical) plotted against the same quantile of the first distribution (y-coordinate, our data). Thus the line is a parametric curve with the parameter which is the number of the interval for the quantile.
+#### Task 4
+
+1.Plot a quantile-quantile plot (QQ plot) to "assess" normality. 
+
+    Note: This plot compares the data we have (Sample Quantiles) with a theoretical sample coming from a normal distribution.  Each point (x, y) corresponds to one of the quantiles of the second distribution (x-coordinate, theoretical) plotted against the same quantile of the first distribution (y-coordinate, our data). Thus the line is a parametric curve with the parameter which is the number of the interval for the quantile.
 
 ```{r QQPlot}
 
@@ -48,23 +77,37 @@ Plot a quantile-quantile plot (QQ plot) to "assess" normality. This plot compare
 
 A standard way of transforming the data to be better approximated by a normal distribution is by using the log-transform? 
 
-Carry out this transformation and use a histogram and QQ plot to see whether it works...
+#### Task 5
+1. Carry out this transformation 
+2. Use a histogram and QQ plot to see whether it works...
 
 
 ```{r LogTransform}
 
 ```
 
+***
 
 
-# Missing data
+## Missing data
+
+#### Task 6
+
 What happens if we only use complete data? How much data is missing?
+
+Topics used here (but not explored):
+[Subsetting data frames](https://swcarpentry.github.io/r-novice-gapminder/06-data-subsetting/)
+[The apply family](https://nsaunders.wordpress.com/2010/08/20/a-brief-introduction-to-apply-in-r/) 
 
 ```{r whatsmissing}
 
 ```
 
+
 We need to combine the datasets for imputation, so that we don't have NAs in the test data as well!
+
+#### Task 7
+Combine the testing and training data.
 
 ```{r combineAlldata}
 
@@ -73,6 +116,8 @@ We need to combine the datasets for imputation, so that we don't have NAs in the
 
 How do we impute the missing data?
 
+#### Task 8
+Explore the data using the table() function (variable by variable).
 
 ```{r ExploreUsingTable}
 
@@ -80,57 +125,76 @@ How do we impute the missing data?
 
 Read the metadata file and see that many of the NAs should be recoded as None since these features are lacking in the house. 
 
+#### Task 9
+Recode the NA values that should be None using mutate() and fct_explicit_na(). 
 
 ```{r missingBasedOnDescription}
 
 ```
 
-For the GarageYrBlt set to zero. 
+#### Task 10
+
+For the GarageYrBlt - set NA values using replace_na() to zero. 
 
 
 ```{r missingSetToZero}
 
 ```
 
-Lot frontage - set as median for the neighborhood.
+#### Task 11
+
+For Lot frontage - set it to be the median for the neighborhood using group_by() and mutate().
 
 ```{r LotFrontageMedian}
 # as a hint - use group_by() and mutate()
 # will also need ifelse() function
 ```
 
+*** 
 
-# Now split data again
+### Now split data again
+
+#### Task 12
 Split back into training (trainHC) and test (testHC) sets (because kaggle training set had prices, test didn't).
 
 ```{r split}
 # no comment
 ```
 
+***
 
 
-# Basic exploratory data analysis of training data
+## Basic exploratory data analysis of training data
 
-How does the sale price depend on living  area: X1stFlrSF, X2ndFlrSF, TotalBsmtSF? Create a variable TotalSqFt which is a combination of these 3. Does it better predict the house price?
+#### Task 13
+1. How does the sale price depend on living  area: X1stFlrSF, X2ndFlrSF, TotalBsmtSF? (use a scatterplot to visualise this)
+2. Create a variable TotalSqFt which is a combination of these 
+3. Does it better predict the house price? (again, just using scatterplot at this point)
 
 ```{r SalePriceExplore}
 
 ```
 
-Identify and remove outliers with a high total square foot, but low price
+#### Task 14
+
+Identify and remove outliers with a high total square foot, but low price.
+
+[Useful reference for dplyr](https://datascienceplus.com/data-manipulation-with-dplyr/)
 
 ```{r RemoveOut}
 
 ```
 
-
-
 Does having more bedrooms increase sale price?
+
+#### Task 15
+Use a geom_boxplot() to explore this
 
 ```{r Bedroom}
 
 ```
 
+#### Task 16
 
 Visualise both number of bedrooms (as a factor) and TotalSqFt as a scatterplot to see if a trend is visible. 
 
@@ -140,7 +204,11 @@ Visualise both number of bedrooms (as a factor) and TotalSqFt as a scatterplot t
 
 ```
 
-Are newer or more recently renovated properties more expensive? Investigate this generally and then specifically for 2 - 4 bedroom properties.
+Are newer or more recently renovated properties more expensive? 
+
+#### Task 17
+1. Investigate this generally and then 
+2. ... specifically for 2 - 4 bedroom properties.
 
 ```{r YrBltRemodelled}
 
@@ -157,24 +225,31 @@ From the metadata we know it can be:
 - Fa	Fair
 - Po	Poor
 
+#### Task 18
 Recode this to numeric values using mutate() and recode(). 
 
 ```{r ConvertToNumeric}
 
 ```
 
+#### Task 19
 Convert Bldgtype to numeric
 
 ```{r BldgTypeNeighborhood}
 
 ```
 
+What variables are correlated with each other and with price? 
 
-What variables are correlated with each other and with price? Plot a correlation plot using corrplot() for all numeric variables and those that show the top correlation with LogSalePrice.
+#### Task 20
+1. Plot a correlation plot using corrplot() for all numeric variables and
+2. ... those that show the top correlation with LogSalePrice.
 
 ```{r Corrplot}
 
 ```
+
+#### Task 21
 
 Use the createDataPartition() function to separate the training data into a training and testing subset. Allocate 50% of the data to each class. Run set.seed(12) before this.
 
@@ -182,20 +257,28 @@ Use the createDataPartition() function to separate the training data into a trai
 set.seed(12)
 ```
 
-Fit a linear model considering the "top 10"" correlated (top 9, ignore LogSalePrice for obvious reasons).
+#### Task 22
+Fit a linear model considering the "top 10"" correlated (top 9, ignore LogSalePrice for obvious reasons). Code the variables (column names) manually.
 
 ```{r lm}
 
 ```
 
-Use predict() to predict house prices using our top10 model on the "test" portion of the training dataset. Use rmse to assess the root mean square error (our metric of accuracy). 
+#### Task 23
+
+1. Use predict() to predict house prices using our top10 model on the "test" portion of the training dataset. 
+2. Use rmse to assess the root mean square error (our metric of accuracy). 
 
 
 ```{r HowdWeGo}
 
 ```
 
-Use randomForest to train a random forest model on all of the variables. Use predict and rmse to make the prediction and assess the accuracy respectively. Was a linear (on 9 features) or random forest model more accurate?
+#### Task 24
+
+1. Use randomForest() to train a random forest model on all of the variables. 
+2. Use predict() and rmse() to make the prediction and assess the accuracy respectively. 
+3. Was a linear (on 9 features) or random forest model more accurate?
 
 ```{r RandomForest}
 # randFor <- randomForest(LogSalePrice ~ ., data=trainHCtrain)
@@ -206,9 +289,10 @@ Use randomForest to train a random forest model on all of the variables. Use pre
 # rmse(trainHCtest$LogSalePrice, trainHCtest$randFor)
 ```
 
-Use xgboost to predict house prices from numeric features of training dataset. 
+#### Task 25
 
-Use xgb.plot.importance() to assess which variables are most important for predicting house prices. 
+1. Use xgboost to predict house prices from numeric features of training dataset. 
+2. Use xgb.plot.importance() to assess which variables are most important for predicting house prices. 
 
 ```{r NumericOnlyXGboost}
 # trainHCtrainNum <- as(as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)]), "sparseMatrix")
@@ -272,15 +356,16 @@ Use xgb.plot.importance() to assess which variables are most important for predi
 # xgb.plot.importance(importance_matrix[1:10])
 ```
 
+#### Task 26
 
-Use the glmnet library to train a ridge regression model. Is it more or less accurate than XGBoost? 
+1.Use the glmnet library to train a ridge regression model. 
+2. Is it more or less accurate than XGBoost? 
 
 ```{r RidgeReg}
 # trainHCtrainNumMatrix <- as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)])
 # trainHCtestNumMatrix  <-  as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)])
 # # cross validation for glmnet
 # glm.cv.ridge <- cv.glmnet(trainHCtrainNum[,c(1:38,40)], trainHCtrainNum[,"LogSalePrice"], alpha = 0)
-# # which lambda?
 # penalty.ridge <- glm.cv.ridge$lambda.min
 # glm.ridge <- glmnet(x = trainHCtrainNum[,c(1:38,40)], y = trainHCtrainNum[,"LogSalePrice"], alpha = 0, lambda = penalty.ridge )
 # y_pred.ridge <- as.numeric(predict(glm.ridge, trainHCtestNum[,c(1:38,40)] ))
