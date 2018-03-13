@@ -5,8 +5,8 @@ March 13, 2018
 
 ## Before coming please:
 
-- Install R
-- Install RStudio
+- Install R [(the corresponding version for your OS)](https://www.r-project.org/)
+- [Install RStudio Desktop](https://www.rstudio.com/products/rstudio/download/#download)
 - Open RStudio, and paste the following command into the command console
 
       install.packages(c('tidyverse', 'forcats', 'corrplot', 'caret', 'Metrics', 'randomForest', 'xgboost', 'glmnet', 'car'), dependencies = TRUE)
