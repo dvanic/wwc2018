@@ -3,8 +3,8 @@ title: "Housing data analysis - Women Who Code workshop"
 author: "Darya Vanichkina"
 date: "13/03/2018"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup,  echo=TRUE, results='hide',message=FALSE, warning=FALSE}
@@ -16,7 +16,7 @@ sapply(load.libraries, library, character = TRUE)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Basics ---- 
+## Basics ---- 
 ```{r VeryBasics}
 # Arithmetic operations: R is a calculator
 1 + 1
@@ -64,9 +64,6 @@ class(y)
 
 
 ## Data types: data frames (the main class for data analysis) --- 
-
-
-
 
 
 #### Task 1
@@ -376,12 +373,12 @@ All other models - just work in the housing template/final housing template file
 3. Was a linear (on 9 features) or random forest model more accurate?
 
 ```{r RandomForest}
-randFor <- randomForest(LogSalePrice ~ ., data=trainHCtrain)
-# Predict using the test set
-prediction_rf <- predict(randFor, trainHCtest)
-trainHCtest$randFor <- prediction_rf
-# rmse?
-rmse(trainHCtest$LogSalePrice, trainHCtest$randFor)
+# randFor <- randomForest(LogSalePrice ~ ., data=trainHCtrain)
+# # Predict using the test set
+# prediction_rf <- predict(randFor, trainHCtest)
+# trainHCtest$randFor <- prediction_rf
+# # rmse?
+# rmse(trainHCtest$LogSalePrice, trainHCtest$randFor)
 ```
 
 #### Task 25
@@ -391,65 +388,65 @@ rmse(trainHCtest$LogSalePrice, trainHCtest$randFor)
 
 
 ```{r NumericOnlyXGboost}
-trainHCtrainNum <- as(as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)]), "sparseMatrix")
-trainHCtestNum <-  as(as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)]), "sparseMatrix")
-
-trainD <- xgb.DMatrix(data = trainHCtrainNum, label = trainHCtrainNum[,"LogSalePrice"])
-
-#Cross validate the model
-cv.sparse <- xgb.cv(data = trainD,
-                    nrounds = 600,
-                    min_child_weight = 0,
-                    max_depth = 10,
-                    eta = 0.02,
-                    subsample = .7,
-                    colsample_bytree = .7,
-                    booster = "gbtree",
-                    eval_metric = "rmse",
-                    verbose = TRUE,
-                    print_every_n = 50,
-                    nfold = 4,
-                    nthread = 2,
-                    objective="reg:linear")
-
-#Train the model
-#Choose the parameters for the model
-param <- list(colsample_bytree = .7,
-             subsample = .7,
-             booster = "gbtree",
-             max_depth = 10,
-             eta = 0.02,
-             eval_metric = "rmse",
-             objective="reg:linear")
-
-
-#Train the model using those parameters
-bstSparse <-
-  xgb.train(params = param,
-            data = trainD,
-            nrounds = 600,
-            watchlist = list(train = trainD),
-            verbose = TRUE,
-            print_every_n = 50,
-            nthread = 2)
-
-testD <- xgb.DMatrix(data = trainHCtestNum)
-
-prediction <- predict(bstSparse, testD) #Make the prediction based on the half of the training data set aside
-
-#Put testing prediction and test dataset all together
-
-prediction <- as.data.frame(as.matrix(prediction))
-colnames(prediction) <- "xgboost"
-trainHCtest$xgboost <- prediction$xgboost
-
-
-#Test with RMSE
-rmse(trainHCtest$LogSalePrice, trainHCtest$xgboost)
-
-# Feature importance
-importance_matrix <- xgb.importance(dimnames(trainD)[[2]], model = bstSparse)
-xgb.plot.importance(importance_matrix[1:10])
+# trainHCtrainNum <- as(as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)]), "sparseMatrix")
+# trainHCtestNum <-  as(as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)]), "sparseMatrix")
+# 
+# trainD <- xgb.DMatrix(data = trainHCtrainNum, label = trainHCtrainNum[,"LogSalePrice"])
+# 
+# #Cross validate the model
+# cv.sparse <- xgb.cv(data = trainD,
+#                     nrounds = 600,
+#                     min_child_weight = 0,
+#                     max_depth = 10,
+#                     eta = 0.02,
+#                     subsample = .7,
+#                     colsample_bytree = .7,
+#                     booster = "gbtree",
+#                     eval_metric = "rmse",
+#                     verbose = TRUE,
+#                     print_every_n = 50,
+#                     nfold = 4,
+#                     nthread = 2,
+#                     objective="reg:linear")
+# 
+# #Train the model
+# #Choose the parameters for the model
+# param <- list(colsample_bytree = .7,
+#              subsample = .7,
+#              booster = "gbtree",
+#              max_depth = 10,
+#              eta = 0.02,
+#              eval_metric = "rmse",
+#              objective="reg:linear")
+# 
+# 
+# #Train the model using those parameters
+# bstSparse <-
+#   xgb.train(params = param,
+#             data = trainD,
+#             nrounds = 600,
+#             watchlist = list(train = trainD),
+#             verbose = TRUE,
+#             print_every_n = 50,
+#             nthread = 2)
+# 
+# testD <- xgb.DMatrix(data = trainHCtestNum)
+# 
+# prediction <- predict(bstSparse, testD) #Make the prediction based on the half of the training data set aside
+# 
+# #Put testing prediction and test dataset all together
+# 
+# prediction <- as.data.frame(as.matrix(prediction))
+# colnames(prediction) <- "xgboost"
+# trainHCtest$xgboost <- prediction$xgboost
+# 
+# 
+# #Test with RMSE
+# rmse(trainHCtest$LogSalePrice, trainHCtest$xgboost)
+# 
+# # Feature importance
+# importance_matrix <- xgb.importance(dimnames(trainD)[[2]], model = bstSparse)
+# xgb.plot.importance(importance_matrix[1:10])
 ```
 
 
@@ -459,12 +456,12 @@ xgb.plot.importance(importance_matrix[1:10])
 2. Is it more or less accurate than XGBoost? 
 
 ```{r RidgeReg}
-trainHCtrainNumMatrix <- as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)])
-trainHCtestNumMatrix  <-  as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)])
-# cross validation for glmnet
-glm.cv.ridge <- cv.glmnet(trainHCtrainNum[,c(1:38,40)], trainHCtrainNum[,"LogSalePrice"], alpha = 0)
-penalty.ridge <- glm.cv.ridge$lambda.min
-glm.ridge <- glmnet(x = trainHCtrainNum[,c(1:38,40)], y = trainHCtrainNum[,"LogSalePrice"], alpha = 0, lambda = penalty.ridge )
-y_pred.ridge <- as.numeric(predict(glm.ridge, trainHCtestNum[,c(1:38,40)] ))
-rmse(trainHCtest$LogSalePrice, y_pred.ridge)
+# trainHCtrainNumMatrix <- as.matrix(trainHCtrain[ , sapply(trainHCtrain, is.numeric)])
+# trainHCtestNumMatrix  <-  as.matrix(trainHCtest[ , sapply(trainHCtest, is.numeric)])
+# # cross validation for glmnet
+# glm.cv.ridge <- cv.glmnet(trainHCtrainNum[,c(1:38,40)], trainHCtrainNum[,"LogSalePrice"], alpha = 0)
+# penalty.ridge <- glm.cv.ridge$lambda.min
+# glm.ridge <- glmnet(x = trainHCtrainNum[,c(1:38,40)], y = trainHCtrainNum[,"LogSalePrice"], alpha = 0, lambda = penalty.ridge )
+# y_pred.ridge <- as.numeric(predict(glm.ridge, trainHCtestNum[,c(1:38,40)] ))
+# rmse(trainHCtest$LogSalePrice, y_pred.ridge)
 ```

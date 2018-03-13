@@ -3,8 +3,8 @@ title: "Housing data analysis - Women Who Code workshop"
 author: "Darya Vanichkina"
 date: "13/03/2018"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 
@@ -16,7 +16,7 @@ Useful links Darya mentioned in the workshop:
 - [Useful reference for dplyr](https://datascienceplus.com/data-manipulation-with-dplyr/)
 
 
-```{r setup, include=FALSE}
+```{r setup,  echo=TRUE, results='hide',message=FALSE, warning=FALSE}
 load.libraries <- c('tidyverse', 'forcats', 'corrplot', 'caret', 'Metrics', 'randomForest', 'xgboost', 'glmnet')
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependences = TRUE)
@@ -289,7 +289,7 @@ From the metadata we know it can be:
 Recode this to numeric values using mutate() and recode(). 
 
 
-```{r ConvertToNumeric}
+```{r ConvertToNumeric, warning=FALSE}
 class(trainHC$KitchenQual)
 trainHC %>% ggplot(aes(x = KitchenQual, y = LogSalePrice)) + geom_boxplot() + theme_minimal()
 
