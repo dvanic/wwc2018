@@ -3,8 +3,8 @@ title: "Housing data analysis - Women Who Code workshop"
 author: "Darya Vanichkina"
 date: "13/03/2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup,  echo=TRUE, results='hide',message=FALSE, warning=FALSE}
