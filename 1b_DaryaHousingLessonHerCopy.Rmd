@@ -77,9 +77,12 @@ class(myprestige)
 myprestige$job <- row.names(myprestige)
 head(myprestige)
 
-read.csv()
 # train.csv
 # test.csv
+# Set the directory here (to where YOU are)
+getwd()
+setwd("~/Dropbox/Documents/06_Teaching/WWC/housing/")
+# the above is my file path; you will need to change it to wherever wwc-2018 is on your filesystem
 trainH <- read.csv("train.csv")
 testH <- read.csv("test.csv")
 ```
