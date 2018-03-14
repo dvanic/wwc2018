@@ -31,6 +31,9 @@ This will install all of the packages aka libraries we will need to use for the 
 1. Please fill out the feedback form [here](https://goo.gl/forms/M9goXHBE3ghVBkBB3). This is Darya's personal one, not the standard WWC one. Thank you!
 2. If you try to work more on the materials in this workshop and have questions, please feel free to open them as issues tickets here in the repo on github.
 
+## Details on what the files are (and which you care about)
+#### 1_DaryaHousingLesson.Rmd
+This is the file for what Darya was trying to do on the board. It uses the Prestige data from the car package to demonstrate the basic transformations. The reason we use this data is that it's relatively small, so easy to display what 
 
 ## Where to from here?
 
