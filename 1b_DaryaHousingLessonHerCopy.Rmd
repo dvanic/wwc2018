@@ -3,8 +3,8 @@ title: "Housing data analysis - Women Who Code workshop"
 author: "Darya Vanichkina"
 date: "13/03/2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup,  echo=TRUE, results='hide',message=FALSE, warning=FALSE}
@@ -27,7 +27,7 @@ TRUE + TRUE
 Gotcha: R is not python (works only for numeric):
 
 ```{r}
-#"1" + "1"
+# "1" + "1"
 ```
 Variables:
 
@@ -36,6 +36,7 @@ x <- 1 # the R "way" to do it ...
 y = 2
 print(x)
 print(y)
+x
 ```
 
 [More about why](https://csgillespie.wordpress.com/2010/11/16/assignment-operators-in-r-vs/)
@@ -72,7 +73,17 @@ Load the data in from csv.
 ```{r ReadData, echo=TRUE, results='hide'}
 # read.csv("file")
 myprestige <- Prestige
+class(myprestige)
+myprestige$job <- row.names(myprestige)
+head(myprestige)
+
+read.csv()
+# train.csv
+# test.csv
+trainH <- read.csv("train.csv")
+testH <- read.csv("test.csv")
 ```
+
 
 
 
@@ -87,7 +98,14 @@ Use the summary() and str() functions to explore...
 
 
 ```{r WhatFeat,  echo=TRUE, results='hide'}
-
+summary(myprestige)
+str(myprestige)
+table(myprestige$type, useNA = "always")
+dim(myprestige)
+# trainH
+summary(trainH)
+str(trainH)
+dim(trainH)
 ```
 
 ## What does the distribution of sale price look like?
@@ -100,6 +118,27 @@ Use the summary() and str() functions to explore...
 
 
 ```{r PlotSalehistogram}
+myprestige %>%
+  ggplot(aes(x = income)) + geom_histogram() 
+
+myprestige %>%
+  ggplot(aes(x = income)) + geom_histogram() + theme_minimal()
+
+myprestige %>%
+  ggplot(aes(x = income)) + geom_histogram(bins = 100) + theme_minimal()
+
+myprestige %>%
+  ggplot(aes(x = income)) + geom_histogram(bins = 100, aes(y = ..density..)) + theme_minimal() + geom_density(col = "red")
+
+myprestige %>%
+  ggplot(aes(x = income)) + geom_histogram(bins = 100, aes(y = ..density..)) + theme_minimal() + geom_density(col = "red") + stat_function(fun = dnorm, color = "blue", args=list(mean = mean(myprestige$income), sd = sd(myprestige$income)))
+
+
+# trainH
+
+trainH %>%
+  ggplot(aes(x = SalePrice)) + geom_histogram(bins = 100, aes(y = ..density..)) + theme_minimal() + geom_density(col = "red") + stat_function(fun = dnorm, color = "blue", args=list(mean = mean(trainH$SalePrice), sd = sd(trainH$SalePrice)))
+
 
 ```
 
@@ -110,6 +149,11 @@ Use the summary() and str() functions to explore...
     Note: This plot compares the data we have (Sample Quantiles) with a theoretical sample coming from a normal distribution.  Each point (x, y) corresponds to one of the quantiles of the second distribution (x-coordinate, theoretical) plotted against the same quantile of the first distribution (y-coordinate, our data). Thus the line is a parametric curve with the parameter which is the number of the interval for the quantile.
 
 ```{r QQPlot}
+qqnorm(myprestige$income)
+qqline(myprestige$income)
+
+qqnorm(trainH$SalePrice)
+qqline(trainH$SalePrice)
 
 ```
 
@@ -121,7 +165,16 @@ A standard way of transforming the data to be better approximated by a normal di
 
 
 ```{r LogTransform}
+myprestige$incomeLog <- log(myprestige$income + 1)
+qqnorm(myprestige$incomeLog) 
+qqline(myprestige$incomeLog)
 
+
+trainH$LogSalePrice <-log(trainH$SalePrice + 1)
+qqnorm(trainH$LogSalePrice) 
+qqline(trainH$LogSalePrice)
+trainH$SalePrice <- NULL
+myprestige$income <- NULL
 ```
 
 
@@ -137,26 +190,22 @@ Topics used here (but not explored):
 [The apply family](https://nsaunders.wordpress.com/2010/08/20/a-brief-introduction-to-apply-in-r/) 
 
 ```{r whatsmissing}
-```
+dim(myprestige)
+dim(myprestige[complete.cases(myprestige),  ])
+dim(myprestige[!complete.cases(myprestige),  ])
 
-We need to combine the datasets for imputation, so that we don't have NAs in the test data as well!
+colSums(sapply(myprestige, is.na)) 
 
-#### Task 7
-Combine the testing and training data.
+colSums(sapply(myprestige, is.na)) [colSums((sapply(myprestige, is.na))) > 0]
 
-```{r combineAlldata}
+# trainH
+colSums(sapply(trainH, is.na)) [colSums((sapply(trainH, is.na))) > 0]
+
 
 ```
 
 
 How do we impute the missing data?
-
-#### Task 8
-Explore the data using the table() function (variable by variable).
-
-
-```{r ExploreUsingTable}
-```
 
 Read the metadata file and see that many of the NAs should be recoded as None since these features are lacking in the house. 
 
@@ -164,7 +213,7 @@ Read the metadata file and see that many of the NAs should be recoded as None si
 Recode the NA values that should be None using mutate() and fct_explicit_na(). 
 
 ```{r missingBasedOnDescription}
-
+trainH <- trainH %>% mutate(PoolQC = fct_explicit_na(PoolQC, na_level = "None"))
 ```
 
 #### Task 10
@@ -173,6 +222,7 @@ For the GarageYrBlt - set NA values using replace_na() to zero.
 
 ```{r missingSetToZero}
 
+trainH <- trainH %>% replace_na(list(GarageYrBlt = 0))
 
 ```
 
@@ -181,16 +231,12 @@ For the GarageYrBlt - set NA values using replace_na() to zero.
 For Lot frontage - set it to be the median for the neighborhood using group_by() and mutate().
 
 ```{r LotFrontageMedian}
+trainH %>% group_by(Neighborhood) %>% summarise(lotFmed = median(LotFrontage, na.rm = TRUE))
+
+trainH <- trainH %>% group_by(Neighborhood) %>% mutate(LotFrontage = ifelse(is.na(LotFrontage), median(LotFrontage, na.rm = TRUE), LotFrontage))
 
 ```
 
-#### Task 12
-Split back into training (trainHC) and test (testHC) sets (because kaggle training set had prices, test didn't).
-
-
-```{r split}
-# no demo here
-```
 
 ***
 
@@ -203,73 +249,11 @@ Split back into training (trainHC) and test (testHC) sets (because kaggle traini
 3. Does it better predict the house price? (again, just using scatterplot at this point)
 
 ```{r SalePriceExplore}
+trainH %>% ggplot(aes(x = X1stFlrSF, y = LogSalePrice)) +geom_point() + theme_minimal()
 
-```
-
-#### Task 14
-
-Identify and remove outliers with a high total square foot, but low price.
-
-[Useful reference for dplyr](https://datascienceplus.com/data-manipulation-with-dplyr/)
-
-```{r RemoveOut}
-
-```
-
-Does having more bedrooms increase sale price?
-
-#### Task 15
-Use a geom_boxplot() to explore this
-
-```{r Bedroom}
-
-```
-
-#### Task 16
-
-Visualise both number of bedrooms (as a factor) and TotalSqFt as a scatterplot to see if a trend is visible. 
+trainH %>% ggplot(aes(x = X2ndFlrSF, y = LogSalePrice)) +geom_point() + theme_minimal()
 
 
-```{r CombineAreaAndSqFt}
-
-
-```
-
-Are newer or more recently renovated properties more expensive? 
-
-#### Task 17
-1. Investigate this generally and then 
-2. ... specifically for 2 - 4 bedroom properties.
-
-
-```{r YrBltRemodelled}
-# no code
-```
-
-
-Lets convert kitchen quality to numeric (we'll see why we need this later):
-
-From the metadata we know it can be:
-
-- Ex	Excellent
-- Gd	Good
-- TA	Typical/Average
-- Fa	Fair
-- Po	Poor
-
-#### Task 18
-Recode this to numeric values using mutate() and recode(). 
-
-```{r ConvertToNumeric}
-
-
-```
-
-#### Task 19
-Convert Bldgtype to numeric
-
-```{r BldgTypeNeighborhood}
-# no need for code
 ```
 
 What variables are correlated with each other and with price? 
@@ -279,7 +263,14 @@ What variables are correlated with each other and with price?
 2. ... those that show the top correlation with LogSalePrice.
 
 ```{r Corrplot}
+trainHCnumeric <- trainH[, sapply(trainH, is.numeric)]
 
+corrplot(cor(trainHCnumeric, use="everything"), method = "circle", type = "lower", sig.level = 0.01, insig= "blank")
+
+correlationmatrix <- as.data.frame(cor(trainHCnumeric, use = "everything"))
+correlationmatrix$name <- row.names(correlationmatrix)
+
+correlationmatrix %>% select(LogSalePrice, name) %>% arrange(desc(LogSalePrice))
 
 ```
 
@@ -290,7 +281,9 @@ Use the createDataPartition() function to separate the training data into a trai
 
 ```{r MakeTestTrain}
 set.seed(12)
-
+partionD <- createDataPartition(y = trainH$LogSalePrice, p = 0.5, list = FALSE)
+trainHtrain <- trainHCnumeric[partionD,]
+trainHtest <- trainHCnumeric[-partionD,]
 
 ```
 
@@ -301,7 +294,10 @@ Fit a linear model considering the "top 10"" correlated (top 9, ignore LogSalePr
 
 
 ```{r lm}
-
+lm_overallQ <- lm(LogSalePrice ~ OverallQual, data = trainHtrain)
+lm_QualGrLiv <- lm(LogSalePrice ~ OverallQual + GrLivArea, data = trainHtrain)
+summary(lm_overallQ)
+summary(lm_QualGrLiv)
 ```
 
 #### Task 23
@@ -310,8 +306,10 @@ Fit a linear model considering the "top 10"" correlated (top 9, ignore LogSalePr
 2. Use rmse to assess the root mean square error (our metric of accuracy). 
 
 ```{r HowdWeGo}
-
-
+predition1 <- predict(lm_overallQ, trainHtest, type = "response")
+predition2 <- predict(lm_QualGrLiv, trainHtest, type = "response")
+rmse(trainHtest$LogSalePrice, predition1)
+rmse(trainHtest$LogSalePrice, predition2)
 
 ```
 
